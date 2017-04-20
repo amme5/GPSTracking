@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "976355238404",
+    "firebase_url": "https://gpstracking2-d6443.firebaseio.com",
+    "project_id": "gpstracking2-d6443",
+    "storage_bucket": "gpstracking2-d6443.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:976355238404:android:f3c2e49c9a0760f0",
+        "android_client_info": {
+          "package_name": "com.example.bartek.gpstracking2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "976355238404-j6p8v4c1j91et30mtqndks0ncsu1vcea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.bartek.gpstracking2",
+            "certificate_hash": "2aa77f957fb1abc468c895677a714127b1f3faf8"
+          }
+        },
+        {
+          "client_id": "976355238404-sbp227hf03rc4jn06i5ad8aul0u5mt0v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAp8hSzT7lXwG4w5YCXSBlsp0nn9E_W6aA"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "976355238404-sbp227hf03rc4jn06i5ad8aul0u5mt0v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
