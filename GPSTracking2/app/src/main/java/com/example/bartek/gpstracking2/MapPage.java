@@ -27,8 +27,6 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     DatabaseReference myRef;
     FirebaseDatabase database;
     TextView tv;
-    //UserLocation location;
-    String latitude, longnitude, userID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +42,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
 
         initmap();
-        //goToLocation(55,55,10);
+
 
         myRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -52,8 +50,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
                 for(DataSnapshot ds : dataSnapshot.getChildren()){
                     UserLocation uInfo = new UserLocation();
-                    uInfo.setLatitude(ds.child(passedId).getValue(UserLocation.class).getLatitude()); //set the name
-                    uInfo.setLongitude(ds.child(passedId).getValue(UserLocation.class).getLongitude()); //set the email
+                    uInfo.setLatitude(ds.child(passedId).getValue(UserLocation.class).getLatitude());
+                    uInfo.setLongitude(ds.child(passedId).getValue(UserLocation.class).getLongitude());
 
                     toster(uInfo.getLatitude());
                     goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
