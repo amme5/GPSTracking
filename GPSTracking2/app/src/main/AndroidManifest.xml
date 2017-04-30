@@ -5,11 +5,15 @@
     <user-permission android:name="andorid.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     //permissions for Google Maps
     <permission android:name="com.vivianaranha.mapapp.permission.MAPS_RECEIVE" android:protectionLevel="signature"/>
     <uses-permission android:name="com.vivianaranha.mapapp.permission.MAPS_RECEIVE"/>
     <uses-permission android:name="com.google.android.providers.gsf.permissions.READ_GSERVICES"/>
+
+
 
     //protection before installing on devices without OpenGL
     <uses-feature android:glEsVersion="0x00020000" android:required="true"/>

@@ -1,9 +1,12 @@
 package com.example.bartek.gpstracking2;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -13,6 +16,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -26,7 +31,10 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     String passedId;
     DatabaseReference myRef;
     FirebaseDatabase database;
-    TextView tv;
+    TextView tv,textstatus,emerg;
+    String online = "Online";
+    String offline = "Offline";
+    boolean first=true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,9 +45,12 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         myRef = database.getReference();
 
         passedId = getIntent().getStringExtra("Passed Id");
-        tv = (TextView)findViewById(R.id.textView);
-        tv.setText(passedId);
+        tv = (TextView)findViewById(R.id.text1);
+        textstatus = (TextView)findViewById(R.id.textOffline);
+        tv.setText("User "+passedId+":");
+        emerg = (TextView)findViewById(R.id.textView7);
 
+        myRef.child("Locations").child(passedId).child("listener").setValue("Online");
 
         initmap();
 
@@ -53,8 +64,28 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     uInfo.setLatitude(ds.child(passedId).getValue(UserLocation.class).getLatitude());
                     uInfo.setLongitude(ds.child(passedId).getValue(UserLocation.class).getLongitude());
 
-                    toster(uInfo.getLatitude());
-                    goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
+                    if(ds.child(passedId).child("status").getValue(String.class).equals("Online"))
+                    {
+                        textstatus.setText(online);
+                        textstatus.setTextColor(Color.parseColor("#009933"));
+                        goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
+                        if(ds.child(passedId).child("emergency").getValue(String.class).equals("true")){
+                            emerg.setText("In danger");
+                            emerg.setTextColor(Color.parseColor("#FF0000"));
+                        }
+                        else{
+                            emerg.setText("Ok");
+                            emerg.setTextColor(Color.parseColor("#009933"));
+                        }
+                    }
+                    else{
+                        textstatus.setText(offline);
+                        emerg.setText("");
+                        textstatus.setTextColor(Color.parseColor("#FF0000"));
+                        mGoogleMap.clear();
+                        myRef.child("Locations").child(passedId).child("emergency").setValue("false");
+                    }
+
                 }
             }
 
@@ -65,6 +96,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         });
 
     }
+
 
     private void initmap() {
 
@@ -78,12 +110,49 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     }
 
     private void goToLocation(double lat, double lng, float zoom) {
+        mGoogleMap.clear();
         LatLng ll= new LatLng(lat,lng);
-        CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
-        mGoogleMap.animateCamera(update);
+        MarkerOptions options = new MarkerOptions().title(passedId).position(ll);
+        mGoogleMap.addMarker(options);
+
+        if(first){
+            CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
+            mGoogleMap.animateCamera(update);
+            first=false;
+        }else{
+            CameraUpdate update = CameraUpdateFactory.newLatLng(ll);
+            mGoogleMap.animateCamera(update);
+        }
 
     }
-    private void toster(double lat){
-        Toast.makeText(this, "lat:"+lat, Toast.LENGTH_LONG).show();
+
+    public void onStartClick(View x){
+        myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
+        Intent i = new Intent(MapPage.this, LoginPage.class);
+        startActivity(i);
     }
+    @Override
+    public void onBackPressed(){
+        myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
+        Intent i = new Intent(MapPage.this, LoginPage.class);
+        startActivity(i);
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        myRef.child("Locations").child(passedId).child("listener").setValue("Online");
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
+    }
+
+
+
 }

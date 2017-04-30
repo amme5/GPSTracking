@@ -25,17 +25,4 @@ public class UserLocation {
         this.longitude = longitude;
     }
 
-/*
-    public UserLocation(double Latitude, String LocationID, double Longitude){
-        this.locationID = LocationID;
-        this.latitude = Latitude;
-        this.longitude = Longitude;
-    }
-/*
-    public String getUserLocationID() { return locationID; }
-
-    public double getUserLocationLatitude() { return latitude; }
-
-    public double getUserLocationtLongitude() { return longitude; }
-    */
 }
