@@ -15,6 +15,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.database.ChildEventListener;
@@ -31,10 +33,14 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     String passedId;
     DatabaseReference myRef;
     FirebaseDatabase database;
-    TextView tv,textstatus,emerg;
+    TextView tv,textstatus,emerg,boundaryText;
     String online = "Online";
     String offline = "Offline";
-    boolean first=true;
+    boolean first=true,firstRad=true;
+    double radius=0;
+    String boundary="NotActive";
+    double x1,y1;
+    LatLng center;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +55,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         textstatus = (TextView)findViewById(R.id.textOffline);
         tv.setText("User "+passedId+":");
         emerg = (TextView)findViewById(R.id.textView7);
+        boundaryText = (TextView)findViewById(R.id.textView10);
 
         myRef.child("Locations").child(passedId).child("listener").setValue("Online");
 
@@ -63,6 +70,28 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     UserLocation uInfo = new UserLocation();
                     uInfo.setLatitude(ds.child(passedId).getValue(UserLocation.class).getLatitude());
                     uInfo.setLongitude(ds.child(passedId).getValue(UserLocation.class).getLongitude());
+
+                    radius = ds.child(passedId).child("radius").getValue(Double.class);
+                    boundary = ds.child(passedId).child("boundary").getValue(String.class);
+                    if(!boundary.equals("NotActive")){
+                        if(firstRad){
+                            x1=ds.child(passedId).child("latitude").getValue(Double.class);
+                            y1=ds.child(passedId).child("longitude").getValue(Double.class);
+                            firstRad=false;
+                            center=new LatLng(x1,y1);
+                        }
+                        if(boundary.equals("Inside")){
+                            boundaryText.setText("Inside");
+                            boundaryText.setTextColor(Color.parseColor("#009933"));
+                        }else{
+                            boundaryText.setText("Outside");
+                            boundaryText.setTextColor(Color.parseColor("#FF0000"));
+                        }
+                    }else{
+                        boundaryText.setText("Not active");
+                        boundaryText.setTextColor(Color.BLACK);
+                        firstRad=true;
+                    }
 
                     if(ds.child(passedId).child("status").getValue(String.class).equals("Online"))
                     {
@@ -114,6 +143,9 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         LatLng ll= new LatLng(lat,lng);
         MarkerOptions options = new MarkerOptions().title(passedId).position(ll);
         mGoogleMap.addMarker(options);
+        if(!boundary.equals("NotActive")){
+            drawCircle();
+        }
 
         if(first){
             CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
@@ -124,6 +156,11 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
             mGoogleMap.animateCamera(update);
         }
 
+    }
+
+    private Circle drawCircle(){
+        CircleOptions options = new CircleOptions().center(center).radius(radius*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
+        return mGoogleMap.addCircle(options);
     }
 
     public void onStartClick(View x){

@@ -11,8 +11,11 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,6 +31,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 import com.firebase.client.Firebase;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -39,8 +43,11 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
     TextView LatitudeText;
     TextView LongitudeText;
-    TextView textView4,textView3;
+    TextView textView4,textView3,insideOut;
     ToggleButton emergencyButton;
+    EditText boundaryEditText;
+    Button delete,setBoundary;
+
     String danger = "Other user informed, to cancel press button";
     String safe = "In case of emergency press button";
     String danger2 = "Listener if offline, you are on your own";
@@ -64,7 +71,8 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     private long FASTEST_INTERVAL = 2000; /* 2 sec */
     private LocationManager locationManager;
     //----------
-
+    double x1,y1,x2,y2,radius1,radius2;
+    boolean first=true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,13 +83,24 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         LatitudeText = (TextView) findViewById(R.id.viewlatitude);
         LongitudeText = (TextView) findViewById(R.id.viewlongitude);
         emergencyButton = (ToggleButton) findViewById(R.id.emergencyButton);
+        insideOut = (TextView) findViewById(R.id.textView9);
 
         id=getIntent().getStringExtra("Passed Id");
         database = FirebaseDatabase.getInstance("https://gpstracking2-d6443.firebaseio.com/");
         myRef = database.getReference("Locations");
         myRefStatus=database.getReference();
-        textView4 = (TextView)findViewById(R.id.textView4);
-        textView3 = (TextView)findViewById(R.id.textView3);
+        textView4 = (TextView) findViewById(R.id.textView4);
+        textView3 = (TextView) findViewById(R.id.textView3);
+        boundaryEditText = (EditText) findViewById(R.id.editText);
+        delete = (Button) findViewById(R.id.button4);
+        delete.setVisibility(View.INVISIBLE);
+        setBoundary = (Button) findViewById(R.id.button2);
+        setBoundary.setVisibility(View.VISIBLE);
+        insideOut.setVisibility(View.INVISIBLE);
+
+        myRef.child(id).child("boundary").setValue("NotActive");
+        first=true;
+        //myRef.child(id).child("radius").setValue(1);
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -92,6 +111,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         checkLocation();
 
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
 
         myRefStatus.addValueEventListener(new ValueEventListener() {
             @Override
@@ -118,6 +138,39 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                         reset=true;
                         listenerOfflineButton();
                     }
+
+                    if(!ds.child(id).child("boundary").getValue(String.class).equals("NotActive")){
+                        if(first)
+                        {
+                            x1=ds.child(id).child("latitude").getValue(Double.class);
+                            y1=ds.child(id).child("longitude").getValue(Double.class);
+                            x2=x1;
+                            y2=y1;
+                            first=false;
+                            radius1=Math.PI*(Double.parseDouble(boundaryEditText.getText().toString())*Double.parseDouble(boundaryEditText.getText().toString()));
+                            Log.d("rad", "rad1: "+radius1);
+                        }else
+                        {
+                            x2=ds.child(id).child("latitude").getValue(Double.class);
+                            y2=ds.child(id).child("longitude").getValue(Double.class);
+                        }
+                        radius2=haversine(x1,y1,x2,y2);
+                        Log.d("rad", "rad2: "+radius2);
+                        if(radius1<radius2){
+                            myRef.child(id).child("boundary").setValue("Outside");
+                            insideOut.setVisibility(View.VISIBLE);
+                            insideOut.setText("Outside");
+                            insideOut.setTextColor(Color.parseColor("#FF0000"));
+                        }else
+                        {
+                            myRef.child(id).child("boundary").setValue("Inside");
+                            insideOut.setVisibility(View.VISIBLE);
+                            insideOut.setText("Inside");
+                            insideOut.setTextColor(Color.parseColor("#009933"));
+                        }
+                    }else{
+                        insideOut.setVisibility(View.INVISIBLE);
+                    }
                 }
             }
 
@@ -128,6 +181,25 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         });
     }
 
+    public void okClick(View x){
+        String bound = boundaryEditText.getText().toString();
+        if (!TextUtils.isEmpty(bound)){
+            myRef.child(id).child("radius").setValue(Double.parseDouble(boundaryEditText.getText().toString()));
+            myRef.child(id).child("boundary").setValue("Inside");
+            delete.setVisibility(View.VISIBLE);
+            setBoundary.setVisibility(View.INVISIBLE);
+
+        }else{
+            Toast.makeText(this, "Provide number", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void deleteClick(View x){
+        myRef.child(id).child("boundary").setValue("NotActive");
+        first=true;
+        setBoundary.setVisibility(View.VISIBLE);
+        delete.setVisibility(View.INVISIBLE);
+    }
     public void resetButton(){
         emergencyButton.setEnabled(true);
         emergencyButton.setChecked(false);
@@ -195,14 +267,20 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         if (mGoogleApiClient != null) {
             mGoogleApiClient.connect();
         }
+        //myRef.child(id).child("boundary").setValue("NotActive");
+        //first=true;
     }
     public void onStartClick(View x){
         myRef.child(id).child("status").setValue("Offline");
+        myRef.child(id).child("boundary").setValue("NotActive");
+        first=true;
         Intent i = new Intent(send_loc.this, LoginPage.class);
         startActivity(i);
     }
     @Override
     public void onBackPressed(){
+        myRef.child(id).child("boundary").setValue("NotActive");
+        first=true;
         myRef.child(id).child("status").setValue("Offline");
         Intent i = new Intent(send_loc.this, LoginPage.class);
         startActivity(i);
@@ -223,6 +301,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        myRef.child(id).child("boundary").setValue("NotActive");
         myRef.child(id).child("status").setValue("Offline");
     }
 
@@ -243,13 +322,13 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
     @Override
     public void onLocationChanged(Location location) {
-
         myRef.child(id).child("latitude").setValue(location.getLatitude());
         myRef.child(id).child("longitude").setValue(location.getLongitude());
         myRef.child(id).child("status").setValue("Online");
         LatitudeText.setText(Double.toString(location.getLatitude()));
         LongitudeText.setText(Double.toString(location.getLongitude()));
     }
+
 
     private boolean checkLocation() {
         if(!isLocationEnabled())
@@ -285,5 +364,17 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 
+    public static double haversine(double lat1, double lng1, double lat2, double lng2) {
+        int r = 6371; // average radius of the earth in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double d = r * c;
+
+        return Math.PI*(d*d);
+    }
 
 }
