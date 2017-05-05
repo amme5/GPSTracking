@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,7 +32,6 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 import com.firebase.client.Firebase;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -41,12 +41,13 @@ import com.google.firebase.database.ValueEventListener;
 
 public class send_loc extends android.app.Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
-    TextView LatitudeText;
-    TextView LongitudeText;
+    TextView readyText;
     TextView textView4,textView3,insideOut;
     ToggleButton emergencyButton;
+    ImageView imageMap;
     EditText boundaryEditText;
     Button delete,setBoundary;
+    String bound;
 
     String danger = "Other user informed, to cancel press button";
     String safe = "In case of emergency press button";
@@ -80,10 +81,11 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         Firebase.setAndroidContext(this);
         setContentView(R.layout.send_loc);
 
-        LatitudeText = (TextView) findViewById(R.id.viewlatitude);
-        LongitudeText = (TextView) findViewById(R.id.viewlongitude);
+        readyText = (TextView) findViewById(R.id.readyText);
         emergencyButton = (ToggleButton) findViewById(R.id.emergencyButton);
         insideOut = (TextView) findViewById(R.id.textView9);
+        imageMap = (ImageView) findViewById(R.id.imageView);
+        imageMap.setImageResource(R.drawable.popup2);
 
         id=getIntent().getStringExtra("Passed Id");
         database = FirebaseDatabase.getInstance("https://gpstracking2-d6443.firebaseio.com/");
@@ -91,7 +93,6 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         myRefStatus=database.getReference();
         textView4 = (TextView) findViewById(R.id.textView4);
         textView3 = (TextView) findViewById(R.id.textView3);
-        boundaryEditText = (EditText) findViewById(R.id.editText);
         delete = (Button) findViewById(R.id.button4);
         delete.setVisibility(View.INVISIBLE);
         setBoundary = (Button) findViewById(R.id.button2);
@@ -100,7 +101,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
         myRef.child(id).child("boundary").setValue("NotActive");
         first=true;
-        //myRef.child(id).child("radius").setValue(1);
+
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -147,7 +148,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                             x2=x1;
                             y2=y1;
                             first=false;
-                            radius1=Math.PI*(Double.parseDouble(boundaryEditText.getText().toString())*Double.parseDouble(boundaryEditText.getText().toString()));
+                            radius1=Math.PI*Double.parseDouble(bound)*Double.parseDouble(bound);
                             Log.d("rad", "rad1: "+radius1);
                         }else
                         {
@@ -179,20 +180,47 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
             }
         });
+
+        setBoundary.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(send_loc.this);
+
+                View mview = getLayoutInflater().inflate(R.layout.popup,null);
+
+                boundaryEditText = (EditText) mview.findViewById(R.id.editTextpop);
+
+                builder.setView(mview)
+                        .setMessage("Set boundary")
+                        .setPositiveButton("Activate", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+
+                                bound = boundaryEditText.getText().toString();
+                                if (!TextUtils.isEmpty(bound)){
+                                    first=true;
+                                    myRef.child(id).child("radius").setValue(Double.parseDouble(boundaryEditText.getText().toString()));
+                                    myRef.child(id).child("boundary").setValue("Inside");
+                                    delete.setVisibility(View.VISIBLE);
+                                    setBoundary.setVisibility(View.INVISIBLE);
+
+                                }else{
+                                    Toast.makeText(send_loc.this, "Provide number", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        })
+                        .setNegativeButton("Cancel",null)
+                        .setCancelable(false);
+                AlertDialog alert = builder.create();
+                alert.show();
+            }
+        });
+
+
+
     }
 
-    public void okClick(View x){
-        String bound = boundaryEditText.getText().toString();
-        if (!TextUtils.isEmpty(bound)){
-            myRef.child(id).child("radius").setValue(Double.parseDouble(boundaryEditText.getText().toString()));
-            myRef.child(id).child("boundary").setValue("Inside");
-            delete.setVisibility(View.VISIBLE);
-            setBoundary.setVisibility(View.INVISIBLE);
-
-        }else{
-            Toast.makeText(this, "Provide number", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     public void deleteClick(View x){
         myRef.child(id).child("boundary").setValue("NotActive");
@@ -270,13 +298,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         //myRef.child(id).child("boundary").setValue("NotActive");
         //first=true;
     }
-    public void onStartClick(View x){
-        myRef.child(id).child("status").setValue("Offline");
-        myRef.child(id).child("boundary").setValue("NotActive");
-        first=true;
-        Intent i = new Intent(send_loc.this, LoginPage.class);
-        startActivity(i);
-    }
+
     @Override
     public void onBackPressed(){
         myRef.child(id).child("boundary").setValue("NotActive");
@@ -325,8 +347,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         myRef.child(id).child("latitude").setValue(location.getLatitude());
         myRef.child(id).child("longitude").setValue(location.getLongitude());
         myRef.child(id).child("status").setValue("Online");
-        LatitudeText.setText(Double.toString(location.getLatitude()));
-        LongitudeText.setText(Double.toString(location.getLongitude()));
+        readyText.setText("Connected");
     }
 
 

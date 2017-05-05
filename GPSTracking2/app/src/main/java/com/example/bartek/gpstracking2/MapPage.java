@@ -33,7 +33,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     String passedId;
     DatabaseReference myRef;
     FirebaseDatabase database;
-    TextView tv,textstatus,emerg,boundaryText;
+    TextView tv,textstatus,emerg,boundaryText,emergText,boundaryText2;
     String online = "Online";
     String offline = "Offline";
     boolean first=true,firstRad=true;
@@ -55,7 +55,11 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         textstatus = (TextView)findViewById(R.id.textOffline);
         tv.setText("User "+passedId+":");
         emerg = (TextView)findViewById(R.id.textView7);
+        emergText = (TextView)findViewById(R.id.textView6);
         boundaryText = (TextView)findViewById(R.id.textView10);
+        boundaryText2 = (TextView)findViewById(R.id.textView11);
+
+        textVisibility(false);
 
         myRef.child("Locations").child(passedId).child("listener").setValue("Online");
 
@@ -89,12 +93,13 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                         }
                     }else{
                         boundaryText.setText("Not active");
-                        boundaryText.setTextColor(Color.BLACK);
+                        boundaryText.setTextColor(Color.GRAY);
                         firstRad=true;
                     }
 
                     if(ds.child(passedId).child("status").getValue(String.class).equals("Online"))
                     {
+                        textVisibility(true);
                         textstatus.setText(online);
                         textstatus.setTextColor(Color.parseColor("#009933"));
                         goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
@@ -108,6 +113,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                         }
                     }
                     else{
+                        textVisibility(false);
                         textstatus.setText(offline);
                         emerg.setText("");
                         textstatus.setTextColor(Color.parseColor("#FF0000"));
@@ -156,6 +162,21 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
             mGoogleMap.animateCamera(update);
         }
 
+    }
+
+    public void textVisibility(boolean var){
+        if(var){
+            emerg.setVisibility(View.VISIBLE);
+            emergText.setVisibility(View.VISIBLE);
+            boundaryText.setVisibility(View.VISIBLE);
+            boundaryText2.setVisibility(View.VISIBLE);
+        }else
+        {
+            emerg.setVisibility(View.INVISIBLE);
+            emergText.setVisibility(View.INVISIBLE);
+            boundaryText.setVisibility(View.INVISIBLE);
+            boundaryText2.setVisibility(View.INVISIBLE);
+        }
     }
 
     private Circle drawCircle(){
