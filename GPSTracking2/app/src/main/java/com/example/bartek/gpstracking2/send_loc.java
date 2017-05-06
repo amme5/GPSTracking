@@ -32,22 +32,32 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 import com.firebase.client.Firebase;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
-public class send_loc extends android.app.Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
+public class send_loc extends android.app.Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener, OnMapReadyCallback{
 
     TextView readyText;
     TextView textView4,textView3,insideOut;
     ToggleButton emergencyButton;
-    ImageView imageMap;
     EditText boundaryEditText;
     Button delete,setBoundary;
-    String bound;
+    String boundRad;
 
     String danger = "Other user informed, to cancel press button";
     String safe = "In case of emergency press button";
@@ -59,7 +69,10 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
     DatabaseReference myRef,myRefStatus;
     FirebaseDatabase database;
-    String id;
+    private FirebaseAuth firebaseAuth;
+    private FirebaseUser user;
+
+    //String id;
     //GPS-------
     private static final String TAG = "MainActivity";
     private GoogleApiClient mGoogleApiClient;
@@ -72,6 +85,14 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     private long FASTEST_INTERVAL = 2000; /* 2 sec */
     private LocationManager locationManager;
     //----------
+    //Maps----
+    GoogleMap mGoogleMap;
+    double radius;
+    LatLng center;
+    String boundary;
+    boolean firstMap=true;
+    //-------
+
     double x1,y1,x2,y2,radius1,radius2;
     boolean first=true;
 
@@ -81,13 +102,21 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         Firebase.setAndroidContext(this);
         setContentView(R.layout.send_loc);
 
+        //Toast.makeText(this, "Create", Toast.LENGTH_SHORT).show();
+
         readyText = (TextView) findViewById(R.id.readyText);
         emergencyButton = (ToggleButton) findViewById(R.id.emergencyButton);
         insideOut = (TextView) findViewById(R.id.textView9);
-        imageMap = (ImageView) findViewById(R.id.imageView);
-        imageMap.setImageResource(R.drawable.popup2);
 
-        id=getIntent().getStringExtra("Passed Id");
+        firebaseAuth= FirebaseAuth.getInstance();
+
+        if(firebaseAuth.getCurrentUser()==null){
+            finish();
+            startActivity(new Intent(this,LoginPage.class));
+        }
+
+        user = firebaseAuth.getCurrentUser();
+
         database = FirebaseDatabase.getInstance("https://gpstracking2-d6443.firebaseio.com/");
         myRef = database.getReference("Locations");
         myRefStatus=database.getReference();
@@ -99,9 +128,13 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         setBoundary.setVisibility(View.VISIBLE);
         insideOut.setVisibility(View.INVISIBLE);
 
-        myRef.child(id).child("boundary").setValue("NotActive");
         first=true;
+        myRef.child(user.getUid()).child("boundary").setValue("NotActive");
+        boundary="NotActive";
+        listenerOfflineButton();
 
+        firstMap=true;
+        initmap();
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -120,7 +153,10 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
                 for(DataSnapshot ds : dataSnapshot.getChildren()){
 
-                    if(ds.child(id).child("listener").getValue(String.class).equals("Online"))
+                    boundary = ds.child(user.getUid()).child("boundary").getValue(String.class);
+                    radius = ds.child(user.getUid()).child("radius").getValue(Double.class);
+
+                    if(ds.child(user.getUid()).child("listener").getValue(String.class).equals("Online"))
                     {
                         listenerStatus=true;
                         textView3.setText(online);
@@ -140,38 +176,42 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                         listenerOfflineButton();
                     }
 
-                    if(!ds.child(id).child("boundary").getValue(String.class).equals("NotActive")){
+                    if(!ds.child(user.getUid()).child("boundary").getValue(String.class).equals("NotActive")){
                         if(first)
                         {
-                            x1=ds.child(id).child("latitude").getValue(Double.class);
-                            y1=ds.child(id).child("longitude").getValue(Double.class);
+                            x1=ds.child(user.getUid()).child("latitude").getValue(Double.class);
+                            y1=ds.child(user.getUid()).child("longitude").getValue(Double.class);
+                            boundaryLatLng(ds.child(user.getUid()).child("latitude").getValue(Double.class),ds.child(user.getUid()).child("longitude").getValue(Double.class));
                             x2=x1;
                             y2=y1;
                             first=false;
-                            radius1=Math.PI*Double.parseDouble(bound)*Double.parseDouble(bound);
+                            radius1=Math.PI*Double.parseDouble(boundRad)*Double.parseDouble(boundRad);
+                            center=new LatLng(x1,y1);
                             Log.d("rad", "rad1: "+radius1);
                         }else
                         {
-                            x2=ds.child(id).child("latitude").getValue(Double.class);
-                            y2=ds.child(id).child("longitude").getValue(Double.class);
+                            x2=ds.child(user.getUid()).child("latitude").getValue(Double.class);
+                            y2=ds.child(user.getUid()).child("longitude").getValue(Double.class);
                         }
                         radius2=haversine(x1,y1,x2,y2);
-                        Log.d("rad", "rad2: "+radius2);
                         if(radius1<radius2){
-                            myRef.child(id).child("boundary").setValue("Outside");
+                            myRef.child(user.getUid()).child("boundary").setValue("Outside");
                             insideOut.setVisibility(View.VISIBLE);
                             insideOut.setText("Outside");
                             insideOut.setTextColor(Color.parseColor("#FF0000"));
+                            boundary="Outside";
                         }else
                         {
-                            myRef.child(id).child("boundary").setValue("Inside");
+                            myRef.child(user.getUid()).child("boundary").setValue("Inside");
                             insideOut.setVisibility(View.VISIBLE);
                             insideOut.setText("Inside");
                             insideOut.setTextColor(Color.parseColor("#009933"));
+                            boundary="Inside";
                         }
                     }else{
                         insideOut.setVisibility(View.INVISIBLE);
                     }
+                    goToLocation(ds.child(user.getUid()).child("latitude").getValue(Double.class),ds.child(user.getUid()).child("longitude").getValue(Double.class),16);
                 }
             }
 
@@ -192,21 +232,22 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                 boundaryEditText = (EditText) mview.findViewById(R.id.editTextpop);
 
                 builder.setView(mview)
-                        .setMessage("Set boundary")
+                        .setMessage("Set boundary [km]")
                         .setPositiveButton("Activate", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
 
-                                bound = boundaryEditText.getText().toString();
-                                if (!TextUtils.isEmpty(bound)){
+                                boundRad = boundaryEditText.getText().toString();
+                                if (!TextUtils.isEmpty(boundRad) && Double.parseDouble(boundRad)<5){
                                     first=true;
-                                    myRef.child(id).child("radius").setValue(Double.parseDouble(boundaryEditText.getText().toString()));
-                                    myRef.child(id).child("boundary").setValue("Inside");
+                                    myRef.child(user.getUid()).child("radius").setValue(Double.parseDouble(boundaryEditText.getText().toString()));
+                                    myRef.child(user.getUid()).child("boundary").setValue("Inside");
                                     delete.setVisibility(View.VISIBLE);
                                     setBoundary.setVisibility(View.INVISIBLE);
+                                    boundary="Inside";
 
                                 }else{
-                                    Toast.makeText(send_loc.this, "Provide number", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(send_loc.this, "Provide number less than 5km", Toast.LENGTH_SHORT).show();
                                 }
                             }
                         })
@@ -221,10 +262,10 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
     }
 
-
-    public void deleteClick(View x){
-        myRef.child(id).child("boundary").setValue("NotActive");
+    public void deleteClick(View view){
+        myRef.child(user.getUid()).child("boundary").setValue("NotActive");
         first=true;
+        boundary="NotActive";
         setBoundary.setVisibility(View.VISIBLE);
         delete.setVisibility(View.INVISIBLE);
     }
@@ -233,14 +274,14 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         emergencyButton.setChecked(false);
         emergencyButton.setBackgroundColor(Color.parseColor("#FF0000"));
         textView4.setText(safe);
-        myRef.child(id).child("emergency").setValue("false");
+        myRef.child(user.getUid()).child("emergency").setValue("false");
     }
     public void listenerOfflineButton(){
         emergencyButton.setEnabled(false);
         emergencyButton.setChecked(false);
         emergencyButton.setBackgroundColor(Color.parseColor("#FF808080"));
         textView4.setText(danger2);
-        myRef.child(id).child("emergency").setValue("false");
+        myRef.child(user.getUid()).child("emergency").setValue("false");
     }
 
     public void emergency(View view){
@@ -248,16 +289,19 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
             if(emergencyButton.isChecked()){
                 textView4.setText(danger);
                 emergencyButton.setBackgroundColor(Color.parseColor("#009933"));
-                myRef.child(id).child("emergency").setValue("true");
+                myRef.child(user.getUid()).child("emergency").setValue("true");
             }
             else{
                 textView4.setText(safe);
                 emergencyButton.setBackgroundColor(Color.parseColor("#FF0000"));
-                myRef.child(id).child("emergency").setValue("false");
+                myRef.child(user.getUid()).child("emergency").setValue("false");
             }
 
     }
-
+    public void boundaryLatLng(double lat, double lng){
+        myRef.child(user.getUid()).child("BndLat").setValue(lat);
+        myRef.child(user.getUid()).child("BndLng").setValue(lng);
+    }
 
     @Override
     public void onConnected(Bundle bundle) {
@@ -295,36 +339,56 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         if (mGoogleApiClient != null) {
             mGoogleApiClient.connect();
         }
-        //myRef.child(id).child("boundary").setValue("NotActive");
-        //first=true;
+        setUserStatus(true);
+        firstMap=true;
+        boundary="NotActive";
+        //Toast.makeText(this, "Start", Toast.LENGTH_SHORT).show();
     }
 
-    @Override
+ /*   @Override
     public void onBackPressed(){
-        myRef.child(id).child("boundary").setValue("NotActive");
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
         first=true;
-        myRef.child(id).child("status").setValue("Offline");
-        Intent i = new Intent(send_loc.this, LoginPage.class);
-        startActivity(i);
-    }
+        myRef.child(user.getUid()).child("boundary").setValue("NotActive");
+        setUserStatus(false);
+        firstMap=true;
+        finish();
+        startActivity(new Intent(getApplicationContext(),ActivityPage.class));
+       // Intent i = new Intent(send_loc.this, LoginPage.class);
+       // startActivity(i);
+    }*/
     @Override
     protected void onStop() {
         super.onStop();
         if (mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();
         }
-        myRef.child(id).child("status").setValue("Offline");
+        firstMap=true;
+        myRef.child(user.getUid()).child("boundary").setValue("NotActive");
+        setUserStatus(false);
+        boundary="NotActive";
+        //deleteClick();
+        //Toast.makeText(this, "Stop", Toast.LENGTH_SHORT).show();
     }
     @Override
     protected void onResume() {
         super.onResume();
-        myRef.child(id).child("status").setValue("Online");
+        setUserStatus(true);
+        firstMap=true;
+        boundary="NotActive";
+        //Toast.makeText(this, "Resume", Toast.LENGTH_SHORT).show();
     }
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        myRef.child(id).child("boundary").setValue("NotActive");
-        myRef.child(id).child("status").setValue("Offline");
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+        setUserStatus(false);
+        first=true;
+        //Toast.makeText(this, "Destruction", Toast.LENGTH_SHORT).show();
     }
 
     protected void startLocationUpdates() {
@@ -341,12 +405,19 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                 mLocationRequest, this);
         Log.d("reque", "--->>>>");
     }
+    public void setUserStatus(boolean stat){
+        if(stat){
+            myRef.child(user.getUid()).child("status").setValue(online);
+        }else{
+            myRef.child(user.getUid()).child("status").setValue(offline);
+        }
+    }
 
     @Override
     public void onLocationChanged(Location location) {
-        myRef.child(id).child("latitude").setValue(location.getLatitude());
-        myRef.child(id).child("longitude").setValue(location.getLongitude());
-        myRef.child(id).child("status").setValue("Online");
+        myRef.child(user.getUid()).child("latitude").setValue(location.getLatitude());
+        myRef.child(user.getUid()).child("longitude").setValue(location.getLongitude());
+        setUserStatus(true);
         readyText.setText("Connected");
     }
 
@@ -398,4 +469,38 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         return Math.PI*(d*d);
     }
 
+    private void initmap() {
+
+        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapFragment2);
+        mapFragment.getMapAsync(this);
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mGoogleMap = googleMap;
+    }
+
+    private void goToLocation(double lat, double lng, float zoom) {
+        mGoogleMap.clear();
+        LatLng ll= new LatLng(lat,lng);
+        MarkerOptions options = new MarkerOptions().title(user.getEmail()).position(ll);
+        mGoogleMap.addMarker(options);
+        if(!boundary.equals("NotActive")){
+            drawCircle();
+        }
+
+        if(firstMap){
+            CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
+            mGoogleMap.animateCamera(update);
+            firstMap=false;
+        }else{
+            CameraUpdate update = CameraUpdateFactory.newLatLng(ll);
+            mGoogleMap.animateCamera(update);
+        }
+
+    }
+    private Circle drawCircle(){
+        CircleOptions options = new CircleOptions().center(center).radius(radius*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
+        return mGoogleMap.addCircle(options);
+    }
 }

@@ -39,6 +39,7 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     //for database
     compile 'com.google.firebase:firebase-messaging:10.2.1'
+    compile 'com.google.firebase:firebase-auth:10.2.1'
     compile 'com.firebase:firebase-client-android:2.3.1'
     compile 'com.google.firebase:firebase-database:10.2.1'
     compile files('libs/jcoord-1.0.jar')

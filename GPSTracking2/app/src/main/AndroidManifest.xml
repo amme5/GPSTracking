@@ -26,15 +26,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".LoginPage">
+        <activity android:name=".ActivityPage" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".send_loc"></activity>
-        <activity android:name=".MapPage"></activity>
+        <activity android:name=".send_loc" android:screenOrientation="portrait"></activity>
+        <activity android:name=".LoginPage" android:screenOrientation="portrait"></activity>
+        <activity android:name=".MapPage" android:screenOrientation="portrait"></activity>
 
         //key for maps authentication
         <meta-data android:name="com.google.android.maps.v2.API_KEY" android:value="AIzaSyCOCxTqzUx4CkNn831x_drnSSqUWa6PAZ8"/>
