@@ -34,9 +34,9 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     GoogleMap mGoogleMap;
     DatabaseReference myRef;
     FirebaseDatabase database;
-    private FirebaseAuth firebaseAuth;
+
     private FirebaseUser user;
-    TextView tv,textstatus,emerg,boundaryText,emergText,boundaryText2;
+    TextView textstatus,emerg,boundaryText,emergText,boundaryText2;
     String online = "Online";
     String offline = "Offline";
     boolean first=true;
@@ -50,7 +50,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.get_map);
 
-        firebaseAuth= FirebaseAuth.getInstance();
+
+        FirebaseAuth firebaseAuth= FirebaseAuth.getInstance();
         if(firebaseAuth.getCurrentUser()==null){
             finish();
             startActivity(new Intent(this,LoginPage.class));
@@ -59,7 +60,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         user = firebaseAuth.getCurrentUser();
 
         database = FirebaseDatabase.getInstance();
-        myRef = database.getReference();
+        myRef = database.getReference("Locations/"+user.getUid());
 
         textstatus = (TextView)findViewById(R.id.textOffline);
         emerg = (TextView)findViewById(R.id.textView7);
@@ -69,7 +70,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
         textVisibility(false);
 
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Online");
+        myRef.child("listener").setValue(online);
 
         initmap();
 
@@ -78,22 +79,20 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
-                for(DataSnapshot ds : dataSnapshot.getChildren()){
-                    UserLocation uInfo = new UserLocation();
-                    uInfo.setLatitude(ds.child(user.getUid()).getValue(UserLocation.class).getLatitude());
-                    uInfo.setLongitude(ds.child(user.getUid()).getValue(UserLocation.class).getLongitude());
+                    //myRef.child("listener").setValue(online);
 
-                    radius = ds.child(user.getUid()).child("radius").getValue(Double.class);
-                    boundary = ds.child(user.getUid()).child("boundary").getValue(String.class);
+                    UserLocation uInfo = new UserLocation();
+                    uInfo.setLatitude(dataSnapshot.getValue(UserLocation.class).getLatitude());
+                    uInfo.setLongitude(dataSnapshot.getValue(UserLocation.class).getLongitude());
+
+                    radius = dataSnapshot.child("radius").getValue(Double.class);
+                    boundary = dataSnapshot.child("boundary").getValue(String.class);
                     if(!boundary.equals("NotActive")){
-                        //if(firstRad){
-                            //x1=ds.child(passedId).child("latitude").getValue(Double.class);
-                            //y1=ds.child(passedId).child("longitude").getValue(Double.class);
-                            x1=ds.child(user.getUid()).child("BndLat").getValue(Double.class);
-                            y1=ds.child(user.getUid()).child("BndLng").getValue(Double.class);
-                            //firstRad=false;
-                            center=new LatLng(x1,y1);
-                        //}
+
+                        x1=dataSnapshot.child("BndLat").getValue(Double.class);
+                        y1=dataSnapshot.child("BndLng").getValue(Double.class);
+                        center=new LatLng(x1,y1);
+
                         if(boundary.equals("Inside")){
                             boundaryText.setText("Inside");
                             boundaryText.setTextColor(Color.parseColor("#009933"));
@@ -104,16 +103,15 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     }else{
                         boundaryText.setText("Not active");
                         boundaryText.setTextColor(Color.GRAY);
-                        //firstRad=true;
                     }
 
-                    if(ds.child(user.getUid()).child("status").getValue(String.class).equals("Online"))
+                    if(dataSnapshot.child("status").getValue(String.class).equals("Online"))
                     {
                         textVisibility(true);
                         textstatus.setText(online);
                         textstatus.setTextColor(Color.parseColor("#009933"));
                         goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
-                        if(ds.child(user.getUid()).child("emergency").getValue(String.class).equals("true")){
+                        if(dataSnapshot.child("emergency").getValue(String.class).equals("true")){
                             emerg.setText("In danger");
                             emerg.setTextColor(Color.parseColor("#FF0000"));
                         }
@@ -125,13 +123,14 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     else{
                         textVisibility(false);
                         textstatus.setText(offline);
+                        first=true;
                         emerg.setText("");
                         textstatus.setTextColor(Color.parseColor("#FF0000"));
                         mGoogleMap.clear();
-                        myRef.child("Locations").child(user.getUid()).child("emergency").setValue("false");
+                        myRef.child("emergency").setValue("false");
                     }
 
-                }
+
             }
 
             @Override
@@ -193,11 +192,6 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         return mGoogleMap.addCircle(options);
     }
 
-    public void onStartClick(View x){
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Offline");
-        Intent i = new Intent(MapPage.this, LoginPage.class);
-        startActivity(i);
-    }
  /*   @Override
     public void onBackPressed(){
         myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
@@ -208,22 +202,22 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     protected void onStart() {
         super.onStart();
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Online");
+        myRef.child("listener").setValue("Online");
     }
     @Override
     protected void onStop() {
         super.onStop();
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Offline");
+        myRef.child("listener").setValue("Offline");
     }
     @Override
     protected void onResume() {
         super.onResume();
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Online");
+        myRef.child("listener").setValue("Online");
     }
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        myRef.child("Locations").child(user.getUid()).child("listener").setValue("Offline");
+        myRef.child("listener").setValue("Offline");
     }
 
 

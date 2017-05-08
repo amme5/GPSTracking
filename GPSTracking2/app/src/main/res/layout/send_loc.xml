@@ -136,4 +136,18 @@
         android:layout_marginRight="8dp"
         app:layout_constraintRight_toLeftOf="@+id/textView" />
 
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="0dp"
+        android:layout_height="60dp"
+        android:layout_marginLeft="0dp"
+        android:layout_marginRight="0dp"
+        android:layout_marginTop="32dp"
+        android:onClick="zoomToMyLoc"
+        android:text="Zoom to my location"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintLeft_toLeftOf="@+id/button4"
+        app:layout_constraintRight_toRightOf="@+id/button4"
+        app:layout_constraintTop_toBottomOf="@+id/textView3" />
+
 </android.support.constraint.ConstraintLayout>

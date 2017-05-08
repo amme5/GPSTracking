@@ -10,12 +10,10 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.firebase.client.Firebase;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -26,7 +24,7 @@ public class LoginPage extends AppCompatActivity {
     private FirebaseAuth firebaseAuth;
     private DatabaseReference myRef;
     private FirebaseDatabase database;
-    private FirebaseUser user;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,9 +54,6 @@ public class LoginPage extends AppCompatActivity {
                                 Toast.makeText(LoginPage.this,"Login Successful",Toast.LENGTH_SHORT).show();
                                 finish();
                                 startActivity(new Intent(getApplicationContext(),ActivityPage.class));
-                                //Intent i = new Intent(LoginPage.this, ActivityPage.class);
-                                //i.putExtra("Passed Id",txtEmail.getText().toString());
-                                //startActivity(i);
 
                             }else{
                                 Toast.makeText(LoginPage.this, task.getException().getMessage() ,Toast.LENGTH_SHORT).show();
@@ -109,29 +104,4 @@ public class LoginPage extends AppCompatActivity {
         myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("status").setValue("Offline");
     }
 
-    public void onStartClick(View x)
-    {
-        EditText IdToPass = (EditText)findViewById(R.id.email);
-        String str = IdToPass.getText().toString();
-
-        if (!TextUtils.isEmpty(str))
-        {
-            if(x.getId() == R.id.addIdbutton)
-            {
-                Intent i = new Intent(LoginPage.this, send_loc.class);
-                i.putExtra("Passed Id",str);
-                startActivity(i);
-            }
-            if(x.getId() == R.id.mapButton)
-            {
-                Intent j = new Intent(LoginPage.this, MapPage.class);
-                j.putExtra("Passed Id",str);
-                startActivity(j);
-            }
-        }else
-        {
-            Toast.makeText(this, "Provide ID", Toast.LENGTH_LONG).show();
-        }
-
-    }
 }
