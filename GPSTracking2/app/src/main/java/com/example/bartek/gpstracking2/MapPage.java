@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.firebase.client.Firebase;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -49,7 +50,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.get_map);
-
+        Firebase.getDefaultConfig().setPersistenceEnabled(true);
 
         FirebaseAuth firebaseAuth= FirebaseAuth.getInstance();
         if(firebaseAuth.getCurrentUser()==null){
@@ -61,6 +62,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
         database = FirebaseDatabase.getInstance();
         myRef = database.getReference("Locations/"+user.getUid());
+        myRef.keepSynced(true);
 
         textstatus = (TextView)findViewById(R.id.textOffline);
         emerg = (TextView)findViewById(R.id.textView7);
@@ -71,6 +73,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         textVisibility(false);
 
         myRef.child("listener").setValue(online);
+        myRef.child("listener").onDisconnect().setValue(offline);
 
         initmap();
 
@@ -79,38 +82,12 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
-                    //myRef.child("listener").setValue(online);
-
-                    UserLocation uInfo = new UserLocation();
-                    uInfo.setLatitude(dataSnapshot.getValue(UserLocation.class).getLatitude());
-                    uInfo.setLongitude(dataSnapshot.getValue(UserLocation.class).getLongitude());
-
-                    radius = dataSnapshot.child("radius").getValue(Double.class);
-                    boundary = dataSnapshot.child("boundary").getValue(String.class);
-                    if(!boundary.equals("NotActive")){
-
-                        x1=dataSnapshot.child("BndLat").getValue(Double.class);
-                        y1=dataSnapshot.child("BndLng").getValue(Double.class);
-                        center=new LatLng(x1,y1);
-
-                        if(boundary.equals("Inside")){
-                            boundaryText.setText("Inside");
-                            boundaryText.setTextColor(Color.parseColor("#009933"));
-                        }else{
-                            boundaryText.setText("Outside");
-                            boundaryText.setTextColor(Color.parseColor("#FF0000"));
-                        }
-                    }else{
-                        boundaryText.setText("Not active");
-                        boundaryText.setTextColor(Color.GRAY);
-                    }
-
                     if(dataSnapshot.child("status").getValue(String.class).equals("Online"))
                     {
                         textVisibility(true);
                         textstatus.setText(online);
                         textstatus.setTextColor(Color.parseColor("#009933"));
-                        goToLocation(uInfo.getLatitude(),uInfo.getLongitude(),16);
+
                         if(dataSnapshot.child("emergency").getValue(String.class).equals("true")){
                             emerg.setText("In danger");
                             emerg.setTextColor(Color.parseColor("#FF0000"));
@@ -119,6 +96,30 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                             emerg.setText("Ok");
                             emerg.setTextColor(Color.parseColor("#009933"));
                         }
+
+                        if(!dataSnapshot.child("boundary").getValue(String.class).equals("NotActive")){
+
+                            x1=dataSnapshot.child("BndLat").getValue(Double.class);
+                            y1=dataSnapshot.child("BndLng").getValue(Double.class);
+                            center=new LatLng(x1,y1);
+
+                            if(dataSnapshot.child("boundary").getValue(String.class).equals("Inside")){
+                                boundaryText.setText("Inside");
+                                boundaryText.setTextColor(Color.parseColor("#009933"));
+                            }else{
+                                boundaryText.setText("Outside");
+                                boundaryText.setTextColor(Color.parseColor("#FF0000"));
+                            }
+
+                            goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
+                            drawCircle(center,dataSnapshot.child("radius").getValue(Double.class));
+
+                        }else{
+                            boundaryText.setText("Not active");
+                            boundaryText.setTextColor(Color.GRAY);
+                            goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
+                        }
+
                     }
                     else{
                         textVisibility(false);
@@ -157,9 +158,9 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         LatLng ll= new LatLng(lat,lng);
         MarkerOptions options = new MarkerOptions().title(user.getUid()).position(ll);
         mGoogleMap.addMarker(options);
-        if(!boundary.equals("NotActive")){
-            drawCircle();
-        }
+       // if(!boundary.equals("NotActive")){
+      //      drawCircle();
+       // }
 
         if(first){
             CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
@@ -170,6 +171,11 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
             mGoogleMap.animateCamera(update);
         }
 
+    }
+
+    private Circle drawCircle(LatLng center1, double rad){
+        CircleOptions options = new CircleOptions().center(center1).radius(rad*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
+        return mGoogleMap.addCircle(options);
     }
 
     public void textVisibility(boolean var){
@@ -187,18 +193,12 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         }
     }
 
-    private Circle drawCircle(){
-        CircleOptions options = new CircleOptions().center(center).radius(radius*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
-        return mGoogleMap.addCircle(options);
-    }
-
- /*   @Override
+    @Override
     public void onBackPressed(){
-        myRef.child("Locations").child(passedId).child("listener").setValue("Offline");
+        super.onBackPressed();
+        myRef.child("listener").setValue("Offline");
         finish();
-        Intent i = new Intent(MapPage.this, LoginPage.class);
-        startActivity(i);
-    }*/
+    }
     @Override
     protected void onStart() {
         super.onStart();
@@ -207,7 +207,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     protected void onStop() {
         super.onStop();
-        myRef.child("listener").setValue("Offline");
+        //myRef.child("listener").setValue("Offline");
     }
     @Override
     protected void onResume() {
