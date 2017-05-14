@@ -3,4 +3,7 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+    <color name="GPS_Green">#2b8a4e</color>
+    <color name="GPS_Grey">#d6d7d7</color>
+    <color name="GPS_bar">#5b7b8d</color>
 </resources>

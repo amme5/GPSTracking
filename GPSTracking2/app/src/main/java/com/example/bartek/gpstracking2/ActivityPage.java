@@ -1,6 +1,7 @@
 package com.example.bartek.gpstracking2;
 
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -18,7 +19,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-public class ActivityPage extends AppCompatActivity {
+public class ActivityPage extends Activity {
 
     private FirebaseAuth firebaseAuth;
     private static long back_pressed;
@@ -43,9 +44,9 @@ public class ActivityPage extends AppCompatActivity {
         myRef = database.getReference("Locations/"+firebaseAuth.getCurrentUser().getUid());
 
         imageMap = (ImageView) findViewById(R.id.imageMap);
-        imageMap.setImageResource(R.drawable.map);
+        //imageMap.setImageResource(R.drawable.map);
         imageLoc = (ImageView) findViewById(R.id.imageLoc);
-        imageLoc.setImageResource(R.drawable.loc);
+        //imageLoc.setImageResource(R.drawable.loc);
 
         myRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -55,14 +56,16 @@ public class ActivityPage extends AppCompatActivity {
                     imageLoc.setImageResource(R.drawable.locoff);
                 }else{
                     isLoc=false;
-                    imageLoc.setImageResource(R.drawable.loc);
+                    imageLoc.setImageResource(R.drawable.locbutton);
+                    //imageLoc.setBackgroundResource(R.drawable.locbutton);
                 }
                 if(dataSnapshot.child("listener").getValue(String.class).equals("Online")){
                     isMap=true;
                     imageMap.setImageResource(R.drawable.mapoff);
                 }else{
                     isMap=false;
-                    imageMap.setImageResource(R.drawable.map);
+                    imageMap.setImageResource(R.drawable.mapbutton);
+                    //imageMap.setBackgroundResource(R.drawable.mapbutton);
                 }
             }
 
@@ -83,7 +86,12 @@ public class ActivityPage extends AppCompatActivity {
 
         return true;
     }
-    @Override
+    public void logout(View view){
+        firebaseAuth.signOut();
+        finish();
+        startActivity(new Intent(this, LoginPage.class));
+    }
+    /*@Override
     public boolean onOptionsItemSelected(MenuItem item){
         if(item.getItemId() == R.id.action_logout){
             firebaseAuth.signOut();
@@ -91,7 +99,7 @@ public class ActivityPage extends AppCompatActivity {
             startActivity(new Intent(this, LoginPage.class));
         }
         return super.onOptionsItemSelected(item);
-    };
+    };*/
 
     public void onLocClick(View x){
         if(!isLoc){

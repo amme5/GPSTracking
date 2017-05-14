@@ -13,6 +13,7 @@
         android:layout_marginRight="8dp"
         android:layout_marginTop="16dp"
         android:ems="10"
+        android:fontFamily="verdana"
         android:hint="insert km"
         android:inputType="numberDecimal"
         android:textColorLink="@android:color/holo_orange_dark"

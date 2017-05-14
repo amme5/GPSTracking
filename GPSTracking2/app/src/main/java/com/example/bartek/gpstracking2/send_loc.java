@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
@@ -16,8 +17,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
 
 //gps
 import com.google.android.gms.common.ConnectionResult;
@@ -53,18 +57,21 @@ import com.google.firebase.auth.FirebaseUser;
 public class send_loc extends android.app.Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener, OnMapReadyCallback{
 
     TextView readyText;
-    TextView textView4,textView3,insideOut;
+    TextView textView4,insideOut;
     ToggleButton emergencyButton;
     EditText boundaryEditText;
-    Button delete,setBoundary;
+    //Button delete,setBoundary;
     String boundRad;
+    FloatingActionButton zoom, setBoundary;
+    private SeekBar sb;
+    ImageView insidebg;
 
     String danger = "Other user informed, to cancel press button";
     String safe = "In case of emergency press button";
     String danger2 = "Listener if offline, you are on your own";
     String online = "Online";
     String offline = "Offline";
-    boolean listenerStatus,reset=true;
+    boolean reset=true;
 
 
     DatabaseReference myRef,myRefStatus;
@@ -120,10 +127,16 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         myRef.keepSynced(true);
 
         textView4 = (TextView) findViewById(R.id.textView4);
-        textView3 = (TextView) findViewById(R.id.textView3);
-        delete = (Button) findViewById(R.id.button4);
-        delete.setVisibility(View.INVISIBLE);
-        setBoundary = (Button) findViewById(R.id.button2);
+        setBoundary = (FloatingActionButton)findViewById(R.id.boundSetFloat);
+        zoom = (FloatingActionButton)findViewById(R.id.zoomFloat);
+        insidebg = (ImageView) findViewById(R.id.imageView3);
+        insidebg.setVisibility(View.INVISIBLE);
+
+        sb = (SeekBar)findViewById(R.id.seekBar);
+        sb.setProgress(100);
+        sb.setVisibility(View.INVISIBLE);
+
+        insidebg.setVisibility(View.INVISIBLE);
         setBoundary.setVisibility(View.VISIBLE);
         insideOut.setVisibility(View.INVISIBLE);
 
@@ -153,20 +166,12 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
                     if(dataSnapshot.child("listener").getValue(String.class).equals("Online"))
                     {
-                        listenerStatus=true;
-                        textView3.setText(online);
-                        textView3.setTextColor(Color.parseColor("#009933"));
-
                         if(reset){
                             resetButton();
                             reset=false;
                         }
                     }
                     else{
-                        listenerStatus=false;
-                        textView3.setText(offline);
-                        textView3.setTextColor(Color.parseColor("#FF0000"));
-
                         reset=true;
                         listenerOfflineButton();
                     }
@@ -184,20 +189,20 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                         radius2Area=haversine(x1,y1,x2,y2);
                         if(radius1Area<radius2Area){
                             myRef.child("boundary").setValue("Outside");
-                            insideOut.setVisibility(View.VISIBLE);
+                            //insideOut.setVisibility(View.VISIBLE);
                             insideOut.setText("Outside");
-                            insideOut.setTextColor(Color.parseColor("#FF0000"));
+                            insideOut.setTextColor(Color.parseColor("#FF4444"));
                         }else
                         {
                             myRef.child("boundary").setValue("Inside");
-                            insideOut.setVisibility(View.VISIBLE);
+                            //insideOut.setVisibility(View.VISIBLE);
                             insideOut.setText("Inside");
-                            insideOut.setTextColor(Color.parseColor("#009933"));
+                            insideOut.setTextColor(Color.parseColor("#2B8A4E"));
                         }
                         goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
                         drawCircle(center,radius);
                     }else{
-                        insideOut.setVisibility(View.INVISIBLE);
+                        //insideOut.setVisibility(View.INVISIBLE);
                         goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
                     }
 
@@ -232,7 +237,11 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                                     myRef.child("BndLat").setValue(lat);
                                     myRef.child("BndLng").setValue(lng);
                                     myRef.child("boundary").setValue("Inside");
-                                    delete.setVisibility(View.VISIBLE);
+                                    sb.setProgress(100);
+                                    insideOut.setVisibility(View.VISIBLE);
+                                    insidebg.setImageResource(R.drawable.insideoutnormal);
+                                    insidebg.setVisibility(View.VISIBLE);
+                                    sb.setVisibility(View.VISIBLE);
                                     setBoundary.setVisibility(View.INVISIBLE);
                                 }else{
                                     Toast.makeText(send_loc.this, "Provide number less than 5km", Toast.LENGTH_SHORT).show();
@@ -246,7 +255,40 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
             }
         });
 
+        //----------------------------------------------------------
+        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                sb.setProgress(progress);
+            }
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                insidebg.setImageResource(R.drawable.insideout);
+                insidebg.setVisibility(View.VISIBLE);
+                insideOut.setVisibility(View.INVISIBLE);
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+                if(sb.getProgress()<5){
+                    myRef.child("boundary").setValue("NotActive");
+                    setBoundary.setVisibility(View.VISIBLE);
+                    sb.setVisibility(View.INVISIBLE);
+                    insidebg.setVisibility(View.INVISIBLE);
+                    insidebg.setImageResource(R.drawable.insideoutnormal);
+                }else{
+                    insidebg.setImageResource(R.drawable.insideoutnormal);
+                    //insidebg.setVisibility(View.INVISIBLE);
+                    insideOut.setVisibility(View.VISIBLE);
+                    sb.setProgress(100);
+                }
+
+            }
+        });
+
+        //----------------------------------------------------------
 
     }
 
@@ -256,15 +298,10 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,16);
         mGoogleMap.animateCamera(update);
     }
-    public void deleteClick(View view){
-        myRef.child("boundary").setValue("NotActive");
-        setBoundary.setVisibility(View.VISIBLE);
-        delete.setVisibility(View.INVISIBLE);
-    }
     public void resetButton(){
         emergencyButton.setEnabled(true);
         emergencyButton.setChecked(false);
-        emergencyButton.setBackgroundColor(Color.parseColor("#FF0000"));
+        emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
         textView4.setText(safe);
         myRef.child("emergency").setValue("false");
     }
@@ -280,12 +317,12 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
             if(emergencyButton.isChecked()){
                 textView4.setText(danger);
-                emergencyButton.setBackgroundColor(Color.parseColor("#009933"));
+                emergencyButton.setBackgroundColor(Color.parseColor("#2B8A4E"));
                 myRef.child("emergency").setValue("true");
             }
             else{
                 textView4.setText(safe);
-                emergencyButton.setBackgroundColor(Color.parseColor("#FF0000"));
+                emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
                 myRef.child("emergency").setValue("false");
             }
 
