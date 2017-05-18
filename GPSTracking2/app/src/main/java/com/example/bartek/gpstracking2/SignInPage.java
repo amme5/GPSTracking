@@ -23,8 +23,6 @@ public class SignInPage extends Activity {
     private  EditText txtPasswordSing;
     private EditText txtPhoneSing;
     private FirebaseAuth firebaseAuth;
-    private DatabaseReference myRef;
-    private FirebaseDatabase database;
 
 
     @Override
@@ -70,6 +68,10 @@ public class SignInPage extends Activity {
     }
 
     public void fillBase(){
+
+        DatabaseReference myRef;
+        FirebaseDatabase database;
+
         database = FirebaseDatabase.getInstance("https://gpstracking2-d6443.firebaseio.com/");
         myRef = database.getReference();
         myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("phone").setValue(txtPhoneSing.getText().toString());

@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.firebase.client.Firebase;
 import com.google.android.gms.maps.CameraUpdate;
@@ -36,8 +35,6 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     private FirebaseUser user;
     TextView textstatus,emerg,boundaryText,emergText,boundaryText2;
     FloatingActionButton callBtn, zoomBtn;
-    String online = "Online";
-    String offline = "Offline";
     String phoneNum;
     boolean first=true;
     double x1,y1;
@@ -73,8 +70,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
         textVisibility(false);
 
-        myRef.child("listener").setValue(online);
-        myRef.child("listener").onDisconnect().setValue(offline);
+        myRef.child("listener").setValue(R.string.online);
+        myRef.child("listener").onDisconnect().setValue(R.string.offline);
 
         initmap();
 
@@ -87,7 +84,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                 if(dataSnapshot.child("status").getValue(String.class).equals("Online"))
                 {
                     textVisibility(true);
-                    textstatus.setText(online);
+                    textstatus.setText(R.string.online);
                     textstatus.setTextColor(Color.parseColor("#2B8A4E"));
 
                     if(dataSnapshot.child("emergency").getValue(String.class).equals("true")){
@@ -125,7 +122,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                 }
                 else{
                     textVisibility(false);
-                    textstatus.setText(offline);
+                    textstatus.setText(R.string.offline);
                     first=true;
                     emerg.setText("");
                     textstatus.setTextColor(Color.parseColor("#FF4444"));
@@ -213,13 +210,13 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     public void onBackPressed(){
         super.onBackPressed();
-        myRef.child("listener").setValue("Offline");
+        myRef.child("listener").setValue(R.string.offline);
         finish();
     }
     @Override
     protected void onStart() {
         super.onStart();
-        myRef.child("listener").setValue("Online");
+        myRef.child("listener").setValue(R.string.online);
     }
     @Override
     protected void onStop() {
@@ -229,12 +226,12 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     protected void onResume() {
         super.onResume();
-        myRef.child("listener").setValue("Online");
+        myRef.child("listener").setValue(R.string.online);
     }
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        myRef.child("listener").setValue("Offline");
+        myRef.child("listener").setValue(R.string.offline);
     }
 
 

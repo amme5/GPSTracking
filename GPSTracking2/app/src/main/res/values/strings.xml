@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">safetyM</string>
     <string name="menu_logout">Logout</string>
+    <string name="danger">Other user informed, to cancel press button</string>
+    <string name="safe">In case of emergency press button</string>
+    <string name="danger2">Listener if offline, you are on your own</string>
+    <string name="online">Online</string>
+    <string name="offline">Offline</string>
+
 </resources>

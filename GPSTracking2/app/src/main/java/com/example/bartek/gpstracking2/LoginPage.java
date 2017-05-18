@@ -14,17 +14,12 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 public class LoginPage extends Activity {
 
     private EditText txtEmail;
     private  EditText txtPassword;
     private FirebaseAuth firebaseAuth;
-    private DatabaseReference myRef;
-    private FirebaseDatabase database;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,43 +62,8 @@ public class LoginPage extends Activity {
     }
 
     public void register(View v){
-        /*if (!TextUtils.isEmpty(txtEmail.getText().toString()) && !TextUtils.isEmpty(txtPassword.getText().toString()) ){
-            final ProgressDialog progressDialog = ProgressDialog.show(LoginPage.this,"Please wait","Processing",true);
-            firebaseAuth.createUserWithEmailAndPassword(txtEmail.getText().toString(),txtPassword.getText().toString())
-                    .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                        @Override
-                        public void onComplete(@NonNull Task<AuthResult> task) {
-                            progressDialog.dismiss();
-                            if(task.isSuccessful()){
-                                Toast.makeText(LoginPage.this,"Register Successful",Toast.LENGTH_SHORT).show();
-                                fillBase();
-                                finish();
-                                startActivity(new Intent(getApplicationContext(),ActivityPage.class));
-                            }else{
-                                Toast.makeText(LoginPage.this, task.getException().getMessage() ,Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-        }else
-        {
-            Toast.makeText(this, "Provide ID", Toast.LENGTH_LONG).show();
-        }*/
         finish();
         startActivity(new Intent(getApplicationContext(),SignInPage.class));
-    }
-
-    public void fillBase(){
-        database = FirebaseDatabase.getInstance("https://gpstracking2-d6443.firebaseio.com/");
-        myRef = database.getReference();
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("boundary").setValue("NotActive");
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("BndLat").setValue(0);
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("BndLng").setValue(0);
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("emergency").setValue("false");
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("latitude").setValue(0);
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("listener").setValue("Offline");
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("longitude").setValue(0);
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("radius").setValue(1);
-        myRef.child("Locations").child(firebaseAuth.getCurrentUser().getUid()).child("status").setValue("Offline");
     }
 
 }

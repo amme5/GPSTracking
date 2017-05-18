@@ -15,7 +15,6 @@ import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -60,38 +59,31 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     TextView textView4,insideOut;
     ToggleButton emergencyButton;
     EditText boundaryEditText;
-    //Button delete,setBoundary;
     String boundRad;
     FloatingActionButton zoom, setBoundary;
     private SeekBar sb;
     ImageView insidebg;
 
-    String danger = "Other user informed, to cancel press button";
-    String safe = "In case of emergency press button";
-    String danger2 = "Listener if offline, you are on your own";
-    String online = "Online";
-    String offline = "Offline";
+
     boolean reset=true;
 
 
-    DatabaseReference myRef,myRefStatus;
+    DatabaseReference myRef;
     FirebaseDatabase database;
     private FirebaseAuth firebaseAuth;
     private FirebaseUser user;
 
-    //String id;
     //GPS-------
     private static final String TAG = "MainActivity";
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
-   // private LocationManager mLocationManager;
 
     private LocationRequest mLocationRequest;
-  //  private com.google.android.gms.location.LocationListener listener;
-    private long UPDATE_INTERVAL = 2 * 1000;  /* 10 secs */
-    private long FASTEST_INTERVAL = 2000; /* 2 sec */
+    private long UPDATE_INTERVAL = 2 * 1000;
+    private long FASTEST_INTERVAL = 2000;
     private LocationManager locationManager;
     //----------
+
     //Maps----
     GoogleMap mGoogleMap;
     double radius;
@@ -302,26 +294,26 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         emergencyButton.setEnabled(true);
         emergencyButton.setChecked(false);
         emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
-        textView4.setText(safe);
+        textView4.setText(R.string.safe);
         myRef.child("emergency").setValue("false");
     }
     public void listenerOfflineButton(){
         emergencyButton.setEnabled(false);
         emergencyButton.setChecked(false);
         emergencyButton.setBackgroundColor(Color.parseColor("#FF808080"));
-        textView4.setText(danger2);
+        textView4.setText(R.string.danger2);
         myRef.child("emergency").setValue("false");
     }
 
     public void emergency(View view){
 
             if(emergencyButton.isChecked()){
-                textView4.setText(danger);
+                textView4.setText(R.string.danger);
                 emergencyButton.setBackgroundColor(Color.parseColor("#2B8A4E"));
                 myRef.child("emergency").setValue("true");
             }
             else{
-                textView4.setText(safe);
+                textView4.setText(R.string.safe);
                 emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
                 myRef.child("emergency").setValue("false");
             }
@@ -439,9 +431,9 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     }
     public void setUserStatus(boolean stat){
         if(stat){
-            myRef.child("status").setValue(online);
+            myRef.child("status").setValue(R.string.online);
         }else{
-            myRef.child("status").setValue(offline);
+            myRef.child("status").setValue(R.string.offline);
         }
     }
 

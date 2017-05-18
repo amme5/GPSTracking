@@ -4,10 +4,8 @@ package com.example.bartek.gpstracking2;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -23,8 +21,7 @@ public class ActivityPage extends Activity {
 
     private FirebaseAuth firebaseAuth;
     private static long back_pressed;
-    private DatabaseReference myRef;
-    private FirebaseDatabase database;
+
     boolean isLoc=false,isMap=false;
     private ImageView imageMap,imageLoc;
 
@@ -32,6 +29,9 @@ public class ActivityPage extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_page);
+
+        FirebaseDatabase database;
+        DatabaseReference myRef;
 
         firebaseAuth= FirebaseAuth.getInstance();
 
@@ -44,9 +44,7 @@ public class ActivityPage extends Activity {
         myRef = database.getReference("Locations/"+firebaseAuth.getCurrentUser().getUid());
 
         imageMap = (ImageView) findViewById(R.id.imageMap);
-        //imageMap.setImageResource(R.drawable.map);
         imageLoc = (ImageView) findViewById(R.id.imageLoc);
-        //imageLoc.setImageResource(R.drawable.loc);
 
         myRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -57,7 +55,6 @@ public class ActivityPage extends Activity {
                 }else{
                     isLoc=false;
                     imageLoc.setImageResource(R.drawable.locbutton);
-                    //imageLoc.setBackgroundResource(R.drawable.locbutton);
                 }
                 if(dataSnapshot.child("listener").getValue(String.class).equals("Online")){
                     isMap=true;
@@ -65,7 +62,6 @@ public class ActivityPage extends Activity {
                 }else{
                     isMap=false;
                     imageMap.setImageResource(R.drawable.mapbutton);
-                    //imageMap.setBackgroundResource(R.drawable.mapbutton);
                 }
             }
 
@@ -75,8 +71,6 @@ public class ActivityPage extends Activity {
             }
         });
 
-        //myRef.child("status").setValue("Offline");
-       // myRef.child("listener").setValue("Offline");
         }
     }
     @Override
@@ -91,16 +85,6 @@ public class ActivityPage extends Activity {
         finish();
         startActivity(new Intent(this, LoginPage.class));
     }
-    /*@Override
-    public boolean onOptionsItemSelected(MenuItem item){
-        if(item.getItemId() == R.id.action_logout){
-            firebaseAuth.signOut();
-            finish();
-            startActivity(new Intent(this, LoginPage.class));
-        }
-        return super.onOptionsItemSelected(item);
-    };*/
-
     public void onLocClick(View x){
         if(!isLoc){
             Intent i = new Intent(ActivityPage.this, send_loc.class);
@@ -114,14 +98,6 @@ public class ActivityPage extends Activity {
         }
     }
 
-  /*  @Override
-    public void onBackPressed(){
-        super.onBackPressed();
-        //firebaseAuth.signOut();
-        finish();
-        System.exit(0);
-    }
-*/
     @Override
     public void onBackPressed() {
         if (back_pressed + 2000 > System.currentTimeMillis()){
