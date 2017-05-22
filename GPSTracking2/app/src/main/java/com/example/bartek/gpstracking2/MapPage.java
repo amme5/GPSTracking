@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.firebase.client.Firebase;
 import com.google.android.gms.maps.CameraUpdate;
@@ -17,6 +18,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -29,12 +31,16 @@ import com.google.firebase.database.ValueEventListener;
 public class MapPage extends android.app.Activity implements OnMapReadyCallback {
 
     GoogleMap mGoogleMap;
+    private Marker marker;
+    private Circle circle;
     DatabaseReference myRef;
     FirebaseDatabase database;
 
     private FirebaseUser user;
     TextView textstatus,emerg,boundaryText,emergText,boundaryText2;
     FloatingActionButton callBtn, zoomBtn;
+    String online = "Online";
+    String offline = "Offline";
     String phoneNum;
     boolean first=true;
     double x1,y1;
@@ -70,8 +76,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
         textVisibility(false);
 
-        myRef.child("listener").setValue(R.string.online);
-        myRef.child("listener").onDisconnect().setValue(R.string.offline);
+        myRef.child("listener").setValue(online);
+        myRef.child("listener").onDisconnect().setValue(offline);
 
         initmap();
 
@@ -84,7 +90,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                 if(dataSnapshot.child("status").getValue(String.class).equals("Online"))
                 {
                     textVisibility(true);
-                    textstatus.setText(R.string.online);
+                    textstatus.setText(online);
                     textstatus.setTextColor(Color.parseColor("#2B8A4E"));
 
                     if(dataSnapshot.child("emergency").getValue(String.class).equals("true")){
@@ -116,13 +122,14 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     }else{
                         boundaryText.setText("Not active");
                         boundaryText.setTextColor(Color.GRAY);
+                        removeCircle();
                         goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
                     }
 
                 }
                 else{
                     textVisibility(false);
-                    textstatus.setText(R.string.offline);
+                    textstatus.setText(offline);
                     first=true;
                     emerg.setText("");
                     textstatus.setTextColor(Color.parseColor("#FF4444"));
@@ -153,10 +160,14 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     }
 
     private void goToLocation(double lat, double lng, float zoom) {
-        mGoogleMap.clear();
         LatLng ll= new LatLng(lat,lng);
-        MarkerOptions options = new MarkerOptions().title(user.getEmail()).position(ll);
-        mGoogleMap.addMarker(options);
+        if(marker==null){
+            MarkerOptions options = new MarkerOptions().title(user.getEmail()).position(ll);
+            marker = mGoogleMap.addMarker(options);
+        }else{
+            marker.setPosition(ll);
+        }
+
         if(first){
             CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
             mGoogleMap.animateCamera(update);
@@ -167,10 +178,17 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         }
 
     }
-
-    private Circle drawCircle(LatLng center1, double rad){
-        CircleOptions options = new CircleOptions().center(center1).radius(rad*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
-        return mGoogleMap.addCircle(options);
+    private void drawCircle(LatLng center1, double rad){
+        if(circle==null){
+            CircleOptions options = new CircleOptions().center(center1).radius(rad*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
+            circle = mGoogleMap.addCircle(options);
+        }
+    }
+    private void removeCircle(){
+        if(circle!=null){
+            circle.remove();
+            circle = null;
+        }
     }
 
     public void textVisibility(boolean var){
@@ -210,28 +228,27 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     public void onBackPressed(){
         super.onBackPressed();
-        myRef.child("listener").setValue(R.string.offline);
+        myRef.child("listener").setValue("Offline");
         finish();
     }
     @Override
     protected void onStart() {
         super.onStart();
-        myRef.child("listener").setValue(R.string.online);
+        myRef.child("listener").setValue("Online");
     }
     @Override
     protected void onStop() {
         super.onStop();
-        //myRef.child("listener").setValue("Offline");
     }
     @Override
     protected void onResume() {
         super.onResume();
-        myRef.child("listener").setValue(R.string.online);
+        myRef.child("listener").setValue("Online");
     }
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        myRef.child("listener").setValue(R.string.offline);
+        myRef.child("listener").setValue("Offline");
     }
 
 

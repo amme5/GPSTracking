@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
@@ -15,6 +16,7 @@ import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -42,6 +44,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -59,16 +62,20 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     TextView textView4,insideOut;
     ToggleButton emergencyButton;
     EditText boundaryEditText;
+    //Button delete,setBoundary;
     String boundRad;
     FloatingActionButton zoom, setBoundary;
     private SeekBar sb;
     ImageView insidebg;
 
+    private Handler mHandler;
 
+    String online = "Online";
+    String offline = "Offline";
     boolean reset=true;
 
 
-    DatabaseReference myRef;
+    DatabaseReference myRef,myRefBnd;
     FirebaseDatabase database;
     private FirebaseAuth firebaseAuth;
     private FirebaseUser user;
@@ -83,14 +90,16 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     private long FASTEST_INTERVAL = 2000;
     private LocationManager locationManager;
     //----------
-
     //Maps----
     GoogleMap mGoogleMap;
+    private Marker marker;
+    private Circle circle;
     double radius;
     LatLng center;
     boolean firstMap=true;
     double lat=0,lng=0;
     //-------
+
 
     double x1,y1,x2,y2,radius1Area,radius2Area;
 
@@ -146,58 +155,58 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                 .build();
 
         checkLocation();
+
         myRef.child("status").onDisconnect().setValue("Offline");
 
         myRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
-                    radius = dataSnapshot.child("radius").getValue(Double.class);
-                    lat=dataSnapshot.child("latitude").getValue(Double.class);
-                    lng=dataSnapshot.child("longitude").getValue(Double.class);
+                radius = dataSnapshot.child("radius").getValue(Double.class);
+                lat=dataSnapshot.child("latitude").getValue(Double.class);
+                lng=dataSnapshot.child("longitude").getValue(Double.class);
 
-                    if(dataSnapshot.child("listener").getValue(String.class).equals("Online"))
+                if(dataSnapshot.child("listener").getValue(String.class).equals("Online"))
+                {
+                    if(reset){
+                        resetButton();
+                        reset=false;
+                    }
+                }
+                else{
+                    reset=true;
+                    listenerOfflineButton();
+                }
+
+                if(!dataSnapshot.child("boundary").getValue(String.class).equals("NotActive")){
+
+                    x1=dataSnapshot.child("BndLat").getValue(Double.class);
+                    y1=dataSnapshot.child("BndLng").getValue(Double.class);
+                    radius1Area=Math.PI*radius*radius;
+                    center=new LatLng(x1,y1);
+
+                    x2=dataSnapshot.child("latitude").getValue(Double.class);
+                    y2=dataSnapshot.child("longitude").getValue(Double.class);
+
+                    radius2Area=haversine(x1,y1,x2,y2);
+                    if(radius1Area<radius2Area){
+                        myRef.child("boundary").setValue("Outside");
+                        //insideOut.setVisibility(View.VISIBLE);
+                        insideOut.setText("Outside");
+                        insideOut.setTextColor(Color.parseColor("#FF4444"));
+                    }else
                     {
-                        if(reset){
-                            resetButton();
-                            reset=false;
-                        }
+                        myRef.child("boundary").setValue("Inside");
+                        //insideOut.setVisibility(View.VISIBLE);
+                        insideOut.setText("Inside");
+                        insideOut.setTextColor(Color.parseColor("#2B8A4E"));
                     }
-                    else{
-                        reset=true;
-                        listenerOfflineButton();
-                    }
-
-                    if(!dataSnapshot.child("boundary").getValue(String.class).equals("NotActive")){
-
-                        x1=dataSnapshot.child("BndLat").getValue(Double.class);
-                        y1=dataSnapshot.child("BndLng").getValue(Double.class);
-                        radius1Area=Math.PI*radius*radius;
-                        center=new LatLng(x1,y1);
-
-                        x2=dataSnapshot.child("latitude").getValue(Double.class);
-                        y2=dataSnapshot.child("longitude").getValue(Double.class);
-
-                        radius2Area=haversine(x1,y1,x2,y2);
-                        if(radius1Area<radius2Area){
-                            myRef.child("boundary").setValue("Outside");
-                            //insideOut.setVisibility(View.VISIBLE);
-                            insideOut.setText("Outside");
-                            insideOut.setTextColor(Color.parseColor("#FF4444"));
-                        }else
-                        {
-                            myRef.child("boundary").setValue("Inside");
-                            //insideOut.setVisibility(View.VISIBLE);
-                            insideOut.setText("Inside");
-                            insideOut.setTextColor(Color.parseColor("#2B8A4E"));
-                        }
-                        goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
-                        drawCircle(center,radius);
-                    }else{
-                        //insideOut.setVisibility(View.INVISIBLE);
-                        goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
-                    }
-
+                    goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
+                    drawCircle(center,radius);
+                }else{
+                    removeCircle();
+                    goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
+                }
 
             }
 
@@ -307,16 +316,16 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
     public void emergency(View view){
 
-            if(emergencyButton.isChecked()){
-                textView4.setText(R.string.danger);
-                emergencyButton.setBackgroundColor(Color.parseColor("#2B8A4E"));
-                myRef.child("emergency").setValue("true");
-            }
-            else{
-                textView4.setText(R.string.safe);
-                emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
-                myRef.child("emergency").setValue("false");
-            }
+        if(emergencyButton.isChecked()){
+            textView4.setText(R.string.danger);
+            emergencyButton.setBackgroundColor(Color.parseColor("#2B8A4E"));
+            myRef.child("emergency").setValue("true");
+        }
+        else{
+            textView4.setText(R.string.safe);
+            emergencyButton.setBackgroundColor(Color.parseColor("#FF4444"));
+            myRef.child("emergency").setValue("false");
+        }
 
     }
 
@@ -360,33 +369,10 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         firstMap=true;
         //Toast.makeText(this, "Start", Toast.LENGTH_SHORT).show();
     }
-
- /*   @Override
-    public void onBackPressed(){
-        if (mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.disconnect();
-        }
-        first=true;
-        myRef.child(user.getUid()).child("boundary").setValue("NotActive");
-        setUserStatus(false);
-        firstMap=true;
-        finish();
-        startActivity(new Intent(getApplicationContext(),ActivityPage.class));
-       // Intent i = new Intent(send_loc.this, LoginPage.class);
-       // startActivity(i);
-    }*/
     @Override
     protected void onStop() {
         super.onStop();
-        /*if (mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.disconnect();
-        }*/
         firstMap=true;
-        //myRef.child("boundary").setValue("NotActive");
-        //setUserStatus(false);
-        //boundary="NotActive";
-        //deleteClick();
-        //Toast.makeText(this, "Stop", Toast.LENGTH_SHORT).show();
     }
     @Override
     protected void onResume() {
@@ -402,8 +388,6 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
             mGoogleApiClient.disconnect();
         }
         myRef.goOffline();
-        //setUserStatus(false);
-        //first=true;
         //Toast.makeText(this, "Destruction", Toast.LENGTH_SHORT).show();
     }
     @Override
@@ -431,9 +415,9 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     }
     public void setUserStatus(boolean stat){
         if(stat){
-            myRef.child("status").setValue(R.string.online);
+            myRef.child("status").setValue(online);
         }else{
-            myRef.child("status").setValue(R.string.offline);
+            myRef.child("status").setValue(offline);
         }
     }
 
@@ -447,7 +431,6 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         readyText.setText("Connected");
     }
 
-
     private boolean checkLocation() {
         if(!isLocationEnabled())
             showAlert();
@@ -455,11 +438,11 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     }
 
     private void showAlert() {
-        final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        dialog.setTitle("Enable Location")
-                .setMessage("Your Locations Settings is set to 'Off'.\nPlease Enable Location to " +
-                        "use this app")
-                .setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
+
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setTitle("Enable Location");
+        dialog.setMessage("Your Locations Settings is set to 'Off'.\nPlease Enable Location to use this app");
+        dialog.setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface paramDialogInterface, int paramInt) {
 
@@ -473,7 +456,8 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
                     }
                 });
-        dialog.show();
+        AlertDialog alertDialog = dialog.create();
+        alertDialog.show();
     }
 
     private boolean isLocationEnabled() {
@@ -507,13 +491,14 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     }
 
     private void goToLocation(double lat, double lng, float zoom) {
-        mGoogleMap.clear();
+        //mGoogleMap.clear();
         LatLng ll= new LatLng(lat,lng);
-        MarkerOptions options = new MarkerOptions().title(user.getEmail()).position(ll);
-        mGoogleMap.addMarker(options);
-        //if(!boundary.equals("NotActive")){
-           // drawCircle();
-       // }
+        if(marker==null){
+            MarkerOptions options = new MarkerOptions().title(user.getEmail()).position(ll);
+            marker = mGoogleMap.addMarker(options);
+        }else{
+            marker.setPosition(ll);
+        }
 
         if(firstMap){
             CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll,zoom);
@@ -525,8 +510,16 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         }
 
     }
-    private Circle drawCircle(LatLng center1, double rad){
-        CircleOptions options = new CircleOptions().center(center1).radius(rad*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
-        return mGoogleMap.addCircle(options);
+    private void drawCircle(LatLng center1, double rad){
+        if(circle==null){
+            CircleOptions options = new CircleOptions().center(center1).radius(rad*1000).fillColor(0x33FF0000).strokeColor(Color.RED).strokeWidth(3);
+            circle = mGoogleMap.addCircle(options);
+        }
+    }
+    private void removeCircle(){
+        if(circle!=null){
+            circle.remove();
+            circle = null;
+        }
     }
 }
