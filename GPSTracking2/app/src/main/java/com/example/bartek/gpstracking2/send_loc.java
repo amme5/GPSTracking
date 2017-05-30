@@ -1,5 +1,7 @@
 package com.example.bartek.gpstracking2;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 
 import android.content.DialogInterface;
@@ -13,6 +15,7 @@ import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -68,17 +71,17 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     private SeekBar sb;
     ImageView insidebg;
 
-    private Handler mHandler;
 
     String online = "Online";
     String offline = "Offline";
     boolean reset=true;
+    private NotificationManager nm;
 
-
-    DatabaseReference myRef,myRefBnd;
+    DatabaseReference myRef;
     FirebaseDatabase database;
     private FirebaseAuth firebaseAuth;
     private FirebaseUser user;
+    ValueEventListener vel;
 
     //GPS-------
     private static final String TAG = "MainActivity";
@@ -100,7 +103,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     double lat=0,lng=0;
     //-------
 
-
+    boolean notifActv = false;
     double x1,y1,x2,y2,radius1Area,radius2Area;
 
     @Override
@@ -158,7 +161,7 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
 
         myRef.child("status").onDisconnect().setValue("Offline");
 
-        myRef.addValueEventListener(new ValueEventListener() {
+        myRef.addValueEventListener(vel = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
@@ -172,10 +175,16 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
                         resetButton();
                         reset=false;
                     }
+                    if(nm!=null)nm.cancel(1);
+                    notifActv=false;
                 }
                 else{
                     reset=true;
                     listenerOfflineButton();
+                    if(!notifActv){
+                        generateOffNotification();
+                        notifActv=true;
+                    }
                 }
 
                 if(!dataSnapshot.child("boundary").getValue(String.class).equals("NotActive")){
@@ -328,6 +337,21 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
         }
 
     }
+    public void generateOffNotification(){
+        NotificationCompat.Builder notification;
+        notification = new NotificationCompat.Builder(this);
+        notification.setAutoCancel(true);
+
+        notification.setSmallIcon(R.drawable.notification_icon);
+        notification.setTicker("SafetyM - user offline");
+        notification.setWhen(System.currentTimeMillis());
+        notification.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+        notification.setContentTitle("SafetyM");
+        notification.setContentText(user.getEmail()+" - Listener is offline");
+
+        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(1, notification.build());
+    }
 
     @Override
     public void onConnected(Bundle bundle) {
@@ -384,6 +408,8 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(nm!=null)nm.cancelAll();
+        myRef.removeEventListener(vel);
         if (mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();
         }
@@ -393,6 +419,8 @@ public class send_loc extends android.app.Activity implements GoogleApiClient.Co
     @Override
     public void onBackPressed(){
         super.onBackPressed();
+        if(nm!=null)nm.cancelAll();
+        myRef.removeEventListener(vel);
         myRef.goOffline();
         if (mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();

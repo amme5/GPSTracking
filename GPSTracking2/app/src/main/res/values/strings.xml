@@ -6,5 +6,7 @@
     <string name="danger2">Listener if offline, you are on your own</string>
     <string name="online">Online</string>
     <string name="offline">Offline</string>
+    <string name="userOnline">User came online</string>
+    <string name="userOffline">User gone offline</string>
 
 </resources>

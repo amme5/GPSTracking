@@ -1,13 +1,16 @@
 package com.example.bartek.gpstracking2;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.NotificationCompat;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.firebase.client.Firebase;
 import com.google.android.gms.maps.CameraUpdate;
@@ -35,6 +38,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     private Circle circle;
     DatabaseReference myRef;
     FirebaseDatabase database;
+    ValueEventListener vel;
 
     private FirebaseUser user;
     TextView textstatus,emerg,boundaryText,emergText,boundaryText2;
@@ -46,7 +50,11 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     double x1,y1;
     LatLng center;
     double lat=0,lng=0;
+    private NotificationManager nm;
 
+    boolean notifActv = false;
+    boolean notifActv2 = false;
+    boolean notifActv3 = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,7 +89,7 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
 
         initmap();
 
-        myRef.addValueEventListener(new ValueEventListener() {
+        myRef.addValueEventListener(vel = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 phoneNum = dataSnapshot.child("phone").getValue(String.class);
@@ -90,15 +98,23 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                 if(dataSnapshot.child("status").getValue(String.class).equals("Online"))
                 {
                     textVisibility(true);
+                    notifActv=false;
+                    if(nm!=null) nm.cancel(1);
                     textstatus.setText(online);
                     textstatus.setTextColor(Color.parseColor("#2B8A4E"));
 
                     if(dataSnapshot.child("emergency").getValue(String.class).equals("true")){
                         emerg.setText("In danger");
+                        if(!notifActv3){
+                            generateDangerNotification();
+                            notifActv3=true;
+                        }
                         emerg.setTextColor(Color.parseColor("#FF4444"));
                     }
                     else{
                         emerg.setText("Ok");
+                        notifActv3=false;
+                        if(nm!=null) nm.cancel(2);
                         emerg.setTextColor(Color.parseColor("#2B8A4E"));
                     }
 
@@ -111,9 +127,15 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                         if(dataSnapshot.child("boundary").getValue(String.class).equals("Inside")){
                             boundaryText.setText("Inside");
                             boundaryText.setTextColor(Color.parseColor("#2B8A4E"));
+                            notifActv2=false;
+                            if(nm!=null) nm.cancel(0);
                         }else{
                             boundaryText.setText("Outside");
                             boundaryText.setTextColor(Color.parseColor("#FF4444"));
+                            if(!notifActv2){
+                                generateBndNotification();
+                                notifActv2=true;
+                            }
                         }
 
                         goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
@@ -122,6 +144,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     }else{
                         boundaryText.setText("Not active");
                         boundaryText.setTextColor(Color.GRAY);
+                        if(nm!=null) nm.cancel(0);
+                        notifActv2=false;
                         removeCircle();
                         goToLocation(dataSnapshot.child("latitude").getValue(Double.class),dataSnapshot.child("longitude").getValue(Double.class),16);
                     }
@@ -132,8 +156,18 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
                     textstatus.setText(offline);
                     first=true;
                     emerg.setText("");
+                    if(nm!=null) {
+                        nm.cancel(2);
+                        nm.cancel(0);
+                    }
+                    if(!notifActv){
+                        generateOffNotification();
+                        notifActv=true;
+                    }
                     textstatus.setTextColor(Color.parseColor("#FF4444"));
                     mGoogleMap.clear();
+                    marker=null;
+                    circle=null;
                     myRef.child("emergency").setValue("false");
                 }
 
@@ -225,9 +259,68 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
         }
     }
 
+    public void generateBndNotification(){
+        NotificationCompat.Builder notification;
+        notification = new NotificationCompat.Builder(this);
+        notification.setAutoCancel(true);
+
+        notification.setSmallIcon(R.drawable.notification_icon);
+        notification.setTicker("User outside");
+        notification.setWhen(System.currentTimeMillis());
+        notification.setContentTitle("SafetyM");
+        notification.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+        notification.setContentText(user.getEmail()+" - User is outside the boundary");
+
+        Intent intent = getIntent();
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        notification.setContentIntent(pendingIntent);
+
+        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(0, notification.build());
+    }
+
+    public void generateOffNotification(){
+        NotificationCompat.Builder notification;
+        notification = new NotificationCompat.Builder(this);
+        notification.setAutoCancel(true);
+
+        notification.setSmallIcon(R.drawable.notification_icon);
+        notification.setTicker("SafetyM - user offline");
+        notification.setWhen(System.currentTimeMillis());
+        notification.setContentTitle("SafetyM");
+        notification.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+        notification.setContentText(user.getEmail()+" - Location provider is offline");
+
+        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(1, notification.build());
+    }
+    public void generateDangerNotification(){
+        NotificationCompat.Builder notification;
+        notification = new NotificationCompat.Builder(this);
+        notification.setAutoCancel(true);
+
+        notification.setSmallIcon(R.drawable.notification_icon);
+        notification.setTicker("SafetyM - user in danger!");
+        notification.setWhen(System.currentTimeMillis());
+        notification.setContentTitle("SafetyM");
+        notification.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+        notification.setContentText(user.getEmail()+" - User is in danger!");
+
+        Intent intent = getIntent();
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        notification.setContentIntent(pendingIntent);
+
+        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(2, notification.build());
+    }
+
     @Override
     public void onBackPressed(){
         super.onBackPressed();
+        if(nm!=null) nm.cancelAll();
+        myRef.removeEventListener(vel);
         myRef.child("listener").setValue("Offline");
         finish();
     }
@@ -248,6 +341,8 @@ public class MapPage extends android.app.Activity implements OnMapReadyCallback 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        myRef.removeEventListener(vel);
+        if(nm!=null) nm.cancelAll();
         myRef.child("listener").setValue("Offline");
     }
 
